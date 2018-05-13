@@ -13,6 +13,22 @@ class Nodeinfo_2_0Action extends ApiAction
         $this->showNodeInfo();
     }
 
+    /*
+     * Technically, the NodeInfo spec defines 'active' as 'signed in at least once',
+     * but GNU social doesn't keep track of when users last logged in, so let's return
+     * the number of users that 'posted at least once', I guess.
+     */
+    function getActiveUsers($days)
+    {
+        $notices = new Notice();
+        $notices->joinAdd(array('profile_id', 'user:id'));
+        $notices->whereAdd('notice.created >= NOW() - INTERVAL ' . $days . ' DAY');
+
+        $activeUsersCount = $notices->count('distinct profile_id');
+
+        return $activeUsersCount;
+    }
+
     function getRegistrationsStatus()
     {
         $areRegistrationsClosed = (common_config('site', 'closed')) ? true : false;
@@ -56,6 +72,9 @@ class Nodeinfo_2_0Action extends ApiAction
         $postCount = $this->getPostCount();
         $commentCount = $this->getCommentCount();
 
+        $usersActiveHalfyear = $this->getActiveUsers(180);
+        $usersActiveMonth = $this->getActiveUsers(30);
+
         $json = json_encode([
             'version' => '2.0',
 
@@ -79,8 +98,8 @@ class Nodeinfo_2_0Action extends ApiAction
             'usage' => [
                 'users' => [
                     'total' => $userCount,
-                    'activeHalfyear' => 1, // TODO
-                    'activeMonth' => 1 // TODO
+                    'activeHalfyear' => $usersActiveHalfyear,
+                    'activeMonth' => $usersActiveMonth
                 ],
                 'localPosts' => $postCount,
                 'localComments' => $commentCount
