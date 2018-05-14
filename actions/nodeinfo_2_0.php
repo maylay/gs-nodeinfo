@@ -6,11 +6,29 @@ if (!defined('GNUSOCIAL')) {
 
 class Nodeinfo_2_0Action extends ApiAction
 {
+    private $plugins;
+
     protected function handle()
     {
         parent::handle();
 
+        $this->plugins = $this->getActivePluginList();
+
         $this->showNodeInfo();
+    }
+
+    function getActivePluginList()
+    {
+        $pluginversions = array();
+        $plugins = array();
+
+        Event::handle('PluginVersion', array(&$pluginversions));
+
+        foreach($pluginversions as $plugin) {
+            $plugins[strtolower($plugin['name'])] = 1;
+        }
+
+        return $plugins;
     }
 
     /*
@@ -65,6 +83,29 @@ class Nodeinfo_2_0Action extends ApiAction
         return $commentCount;
     }
 
+    function getProtocols()
+    {
+        $oStatusEnabled = array_key_exists('ostatus', $this->plugins);
+        $xmppEnabled = (array_key_exists('xmpp', $this->plugins) && common_config('xmpp', 'enabled')) ? true : false;
+        $protocols = array();
+
+        if (Event::handle('StartNodeInfoProtocols', array(&$protocols))) {
+            // Until the OStatus and XMPP plugins handle this themselves,
+            // try to figure out if they're enabled ourselves.
+
+            if ($oStatusEnabled) {
+                $protocols[] = 'ostatus';
+            }
+
+            if ($xmppEnabled) {
+                $protocols[] = 'xmpp';
+            }
+        }
+        Event::handle('EndNodeInfoProtocols', array(&$protcols));
+
+        return $protocols;
+    }
+
     function showNodeInfo()
     {
         $openRegistrations = $this->getRegistrationsStatus();
@@ -75,6 +116,8 @@ class Nodeinfo_2_0Action extends ApiAction
         $usersActiveHalfyear = $this->getActiveUsers(180);
         $usersActiveMonth = $this->getActiveUsers(30);
 
+        $protocols = $this->getProtocols();
+
         $json = json_encode([
             'version' => '2.0',
 
@@ -83,9 +126,7 @@ class Nodeinfo_2_0Action extends ApiAction
                 'version' => GNUSOCIAL_VERSION
             ],
 
-            // TODO: Have plugins register protocols
-            //       (ostatus, xmpp are plugins and may not be enabled)
-            'protocols' => ['ostatus'],
+            'protocols' => $protocols,
 
             // TODO: Have plugins register services
             'services' => [
