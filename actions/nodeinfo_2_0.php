@@ -106,6 +106,44 @@ class Nodeinfo_2_0Action extends ApiAction
         return $protocols;
     }
 
+    function getInboundServices()
+    {
+        // FIXME: Are those always on?
+        $inboundServices = array('atom1.0', 'rss2.0');
+
+        if (array_key_exists('twitterbridge', $this->plugins) && $config['twitterimport']['enabled']) {
+            $inboundServices[] = 'twitter';
+        }
+
+        if (array_key_exists('ostatus', $this->plugins)) {
+            $inboundServices[] = 'gnusocial';
+        }
+
+        return $inboundServices;
+    }
+
+    function getOutboundServices()
+    {
+        $xmppEnabled = (array_key_exists('xmpp', $this->plugins) && common_config('xmpp', 'enabled')) ? true : false;
+
+        // FIXME: Are those always on?
+        $outboundServices = array('atom1.0', 'rss2.0');
+
+        if (array_key_exists('twitterbridge', $this->plugins)) {
+            $outboundServices[] = 'twitter';
+        }
+
+        if (array_key_exists('ostatus', $this->plugins)) {
+            $outboundServices[] = 'gnusocial';
+        }
+
+        if ($xmppEnabled) {
+            $outboundServices[] = 'xmpp';
+        }
+
+        return $outboundServices;
+    }
+
     function showNodeInfo()
     {
         $openRegistrations = $this->getRegistrationsStatus();
@@ -117,6 +155,8 @@ class Nodeinfo_2_0Action extends ApiAction
         $usersActiveMonth = $this->getActiveUsers(30);
 
         $protocols = $this->getProtocols();
+        $inboundServices = $this->getInboundServices();
+        $outboundServices = $this->getOutboundServices();
 
         $json = json_encode([
             'version' => '2.0',
@@ -130,8 +170,8 @@ class Nodeinfo_2_0Action extends ApiAction
 
             // TODO: Have plugins register services
             'services' => [
-                'inbound' => ['atom1.0', 'gnusocial', 'rss2.0'],
-                'outbound' => ['atom1.0', 'gnusocial', 'rss2.0']
+                'inbound' => $inboundServices,
+                'outbound' => $outboundServices
             ],
 
             'openRegistrations' => $openRegistrations,
