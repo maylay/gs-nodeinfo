@@ -17,7 +17,7 @@ class NodeinfoPlugin extends Plugin
         );
 
         $m->connect(
-            'nodeinfo/2.0', array(
+            'main/nodeinfo/2.0', array(
                     'action' => 'nodeinfo_2_0'
                 )
         );
